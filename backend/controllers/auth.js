@@ -1,96 +1,93 @@
-const passport = require('passport')
-const validator = require('validator')
+const jwt = require('jsonwebtoken')
+const bcrypt = require('bcryptjs')
+const asyncHandler = require('express-async-handler')
 const User = require('../models/User')
 
- exports.getLogin = (req, res) => {
-    if (req.user) {
-      return res.redirect('/tablemap')
-    }
-    res.render('login', {
-      title: 'Login'
-    })
+// @desc    Register new user
+// @route   POST/api/users/
+const registerUser = asyncHandler(async (req, res) => {
+  const { name, email, password } = req.body
+
+  if (!name || !email || !password) {
+    res.status(400)
+    throw new Error('Plase add all fields')
   }
-  
-  exports.postLogin = (req, res, next) => {
-    const validationErrors = []
-    if (!validator.isEmail(req.body.email)) validationErrors.push({ msg: 'Please enter a valid email address.' })
-    if (validator.isEmpty(req.body.password)) validationErrors.push({ msg: 'Password cannot be blank.' })
-  
-    if (validationErrors.length) {
-      req.flash('errors', validationErrors)
-      return res.redirect('/login')
-    }
-    req.body.email = validator.normalizeEmail(req.body.email, { gmail_remove_dots: false })
-  
-    passport.authenticate('local', (err, user, info) => {
-      if (err) { return next(err) }
-      if (!user) {
-        req.flash('errors', info)
-        return res.redirect('/login')
-      }
-      req.logIn(user, (err) => {
-        if (err) { return next(err) }
-        req.flash('success', { msg: 'Success! You are logged in.' })
-        res.redirect(req.session.returnTo || '/dashboard')
-      })
-    })(req, res, next)
+
+  // Check if users exists
+  const userExists = await User.findOne({ email })
+
+  if (userExists) {
+    res.status(400)
+    throw new Error('User already exists')
   }
-  
-  exports.logout = (req, res) => {
-    req.logout(() => {
-      console.log('User has logged out.')
+
+  // Hash password
+  const salt = await bcrypt.genSalt(10)
+  const hashedPassword = await bcrypt.hash(password, salt)
+
+  //create user
+  const user = await User.create({
+    name,
+    email,
+    password: hashedPassword
+  })
+
+  if (user) {
+    res.status(200).json({
+      _id: user.id,
+      name: user.name,
+      email: user.email,
+      token: generateToken(user._id)
     })
-    req.session.destroy((err) => {
-      if (err) console.log('Error : Failed to destroy the session during logout.', err)
-      req.user = null
-      res.redirect('/')
-    })
+  } else {
+    res.status(400)
+    throw new Error('Invalid user data')
   }
-  
-  exports.getSignup = (req, res) => {
-    if (req.user) {
-      return res.redirect('/tablemap')
-    }
-    res.render('signup', {
-      title: 'Create Account'
+})
+
+// @desc    Authenticate a user
+// @route   POST /api/users/login
+const loginUser = asyncHandler(async (req, res) => {
+  const { email, password } = req.body
+
+  const user = await User.findOne({ email })
+
+  if (user && (await bcrypt.compare(password, user.password))) {
+    res.json({
+      _id: user.id,
+      name: user.name,
+      email: user.email,
+      token: generateToken(user._id)
     })
+  } else {
+    res.status(400)
+    throw new Error('Invalid credentials')
   }
-  
-  exports.postSignup = (req, res, next) => {
-    const validationErrors = []
-    if (!validator.isEmail(req.body.email)) validationErrors.push({ msg: 'Please enter a valid email address.' })
-    if (!validator.isLength(req.body.password, { min: 8 })) validationErrors.push({ msg: 'Password must be at least 8 characters long' })
-    if (req.body.password !== req.body.confirmPassword) validationErrors.push({ msg: 'Passwords do not match' })
-  
-    if (validationErrors.length) {
-      req.flash('errors', validationErrors)
-      return res.redirect('../signup')
-    }
-    req.body.email = validator.normalizeEmail(req.body.email, { gmail_remove_dots: false })
-  
-    const user = new User({
-      userName: req.body.userName,
-      email: req.body.email,
-      password: req.body.password
-    })
-  
-    User.findOne({$or: [
-      {email: req.body.email},
-      {userName: req.body.userName}
-    ]}, (err, existingUser) => {
-      if (err) { return next(err) }
-      if (existingUser) {
-        req.flash('errors', { msg: 'Account with that email address or username already exists.' })
-        return res.redirect('../signup')
-      }
-      user.save((err) => {
-        if (err) { return next(err) }
-        req.logIn(user, (err) => {
-          if (err) {
-            return next(err)
-          }
-          res.redirect('/tablemap')
-        })
-      })
-    })
-  }
+})
+
+// @desc    Get user data
+// @route   Get /api/users/me
+const getMe = asyncHandler(async (req, res) => {
+  res.status(200).json(req.user)
+})
+
+//Generate token
+const generateToken = id => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: '30d'
+  })
+}
+
+// // @desc   Get all users
+// // @route  Get/api/users
+// const getUsers = asyncHandler(async (req, res) => {
+//   const userList = await User.find()
+//   console.log(userList)
+//   res.status(200)
+// })
+
+module.exports = {
+  registerUser,
+  loginUser,
+  getMe
+}
