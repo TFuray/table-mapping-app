@@ -1,0 +1,13 @@
+div.table{
+  display: flex;
+  background-color: lightblue;
+  height: 70px;
+  width: 70px;
+  justify-content: center;
+}
+
+p.tableNum{
+  display: flex;
+  font-weight: 600;
+  align-self: center;
+}
