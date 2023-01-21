@@ -1,37 +1,41 @@
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
-import axios from "axios"
-
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
 
 const Login = () => {
-const [formdata, setFormdata] = useState({
-  email: '',
-  password: ''
-})
-const {email, password } = formdata
-const navigate = useNavigate()
+  const client = axios.create({
+    baseUrl: "http://localhost:5173"
+  }) 
 
-const API_URL = '/api/users'
-// Login
-const login = async userData => {
-  const response = await axios.post(API_URL, userData)
-  return response.data
-}
+  const [formdata, setFormdata] = useState({
+    email: '',
+    password: ''
+  })
+  const { email, password } = formdata
+  const navigate = useNavigate()
 
-const onSubmit = e => {
-  e.preventDefault()
-  const userData = {
-    email,
-    password
+  const API_URL = '/api/users'
+  // Login
+  const login = async userData => {
+    const response = await axios.post(API_URL, userData)
+
+    return response.data
   }
-  dis
-}
-const onChange = e => {
-  setFormdata(prevState => ({
-    ...prevState,
-    [e.target.name]: e.target.value
-  }))
-}
+
+  const onSubmit = e => {
+    e.preventDefault()
+    const userData = {
+      email,
+      password
+    }
+    login(userData)
+  }
+  const onChange = e => {
+    setFormdata(prevState => ({
+      ...prevState,
+      [e.target.name]: e.target.value
+    }))
+  }
 
   return (
     <>
