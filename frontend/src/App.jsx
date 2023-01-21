@@ -4,7 +4,6 @@ import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import Table from './components/Table'
 import Header from './components/Header'
-import { useState } from 'react'
 
 function App () {
   return (
