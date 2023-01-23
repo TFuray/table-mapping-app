@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios' 
+import axios from 'axios'
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -9,15 +9,9 @@ const Register = () => {
     password: '',
     password2: ''
   })
-  const API_URL = '/api/users'
-  const { name, email, password, password2 } = FormData
+  const { name, email, password, password2 } = formData
 
   const navigate = useNavigate()
-
-  const registerUser = userData => {
-    axios.post(API_URL, userData)
-
-  }
 
   const onChange = e => {
     setFormData(prevState => ({
@@ -26,17 +20,23 @@ const Register = () => {
     }))
   }
 
-  const onSubmit = e => {
+  const onSubmit = async e => {
     e.preventDefault()
-    if (password !== password2) {
-      throw new Error('Passwords do not match')
-    } else {
-      const userData = {
-        name,
-        email,
-        password
-      }
-    }
+
+    const newUser = { ...formData }
+
+    await fetch('http://localhost:5001/api/user', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(newUser)
+    }).catch(error => {
+      window.alert(error)
+      return
+    })
+    setFormData({ name: '', email: '', password: '', password2: '' })
+    navigate('/dashboard')
   }
 
   return (
